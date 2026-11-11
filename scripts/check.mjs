@@ -1,0 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { Script } from 'node:vm';
+import assert from 'node:assert/strict';
+const page=readFileSync('src/index.html','utf8');
+assert(page.includes('lang="zh-Hant"'));
+assert.equal((page.match(/<article class="story"/g)||[]).length,16);
+assert.equal((page.match(/class="full-story"/g)||[]).length,15);
+assert(page.includes('1000626636863')&&page.includes('2654PIDGLryFZtoafm7IM7'));
+const ids=[...page.matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]);
+assert.equal(ids.length,new Set(ids).size,'Duplicate element IDs');
+for(const x of page.matchAll(/href="#([^"]+)"/g))assert(ids.includes(x[1]),`Missing anchor ${x[1]}`);
+for(const x of page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new Script(x[1]);
+const records=JSON.parse(readFileSync('testimonials.json','utf8'));
+const escape=s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#x27;');
+for(const r of records)for(const p of r.paragraphs)assert(page.includes(escape(p)),`Missing paragraph: ${r.title}`);
+assert(!page.includes('appgprj_'),'Sites identity should not be in public source');
+console.log('PASS: navigation, JavaScript syntax, 16 student records, 15 full testimonials and Podcast links.');
